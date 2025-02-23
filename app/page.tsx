@@ -1,101 +1,105 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import Image from "next/image";
+import { getCategories, getProducts } from "@/lib/fetcher";
+
+interface Category {
+  id: number;
+  title: string;
+}
+
+interface Product {
+  id: number;
+  title: string;
+  image: string;
+  description: string;
+  price: number;
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [featuredProduct, setFeaturedProduct] = useState<Product | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const categoryResponse = await getCategories();
+        if (categoryResponse.data) setCategories(categoryResponse.data);
+
+        const productResponse = await getProducts();
+        if (productResponse.data.length > 0) {
+          const randomProduct =
+            productResponse.data[
+              Math.floor(Math.random() * productResponse.data.length)
+            ];
+          setFeaturedProduct(randomProduct);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    }
+    fetchData();
+  }, []);
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      {/* Welcome Heading */}
+      <h1 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-8">
+        Welcome to E-Store
+      </h1>
+
+      {/* Featured Product Section */}
+      {featuredProduct && (
+        <div className="flex flex-col md:flex-row items-center bg-gray-100 dark:bg-gray-800 p-6 rounded-lg shadow-md mb-10">
+          {/* Product Image */}
+          <Image
+            src={`/images/${featuredProduct.image}`}
+            alt={featuredProduct.title}
+            width={400}
+            height={400}
+            className="w-full md:w-1/3 rounded-lg"
+          />
+
+          {/* Product Details */}
+          <div className="mt-6 md:mt-0 md:ml-6 flex-1">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+              {featuredProduct.title}
+            </h2>
+            <p className="text-gray-700 dark:text-gray-300 mt-2">
+              {featuredProduct.description}
+            </p>
+            <p className="text-xl font-bold text-blue-500 mt-4">
+              ${featuredProduct.price}
+            </p>
+            <Link
+              href={`/products/${featuredProduct.id}`}
+              className="mt-4 inline-block bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg transition-all"
+            >
+              View Product
+            </Link>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      )}
+
+      {/* Categories Section */}
+      <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+        Shop by Category
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {categories.map((category) => (
+          <Link
+            key={category.id}
+            href={`/categories/${category.id}`}
+            className="block p-4 border rounded-lg shadow-md hover:shadow-lg transition-all bg-white dark:bg-gray-900"
+          >
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              {category.title}
+            </h2>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
