@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
-import { OpenAI } from "@langchain/openai";
+import { ChatOpenAI } from "@langchain/openai";
 import { createSqlQueryChain } from "langchain/chains/sql_db";
 import { queryDatabase } from "@/lib/server/db"; // ✅ Corrected import path
+import {
+  ChatPromptTemplate,
+  MessagesPlaceholder,
+} from "@langchain/core/prompts";
+import { HumanMessage } from "@langchain/core/messages";
 
 // ... (rest of your code)
 
@@ -90,7 +95,7 @@ export async function POST(req: Request) {
     console.log("🔍 User Query:", lastMessage);
 
     // ✅ Initialize OpenAI Model
-    const model = new OpenAI({
+    const model = new ChatOpenAI({
       openAIApiKey: process.env.OPENAI_API_KEY!,
       modelName: "gpt-4o",
     });
@@ -105,7 +110,8 @@ export async function POST(req: Request) {
       dialect: "postgres",
     });
 
-    const sqlQuery = await chain.run(lastMessage);
+    const sqlQuery = await chain.invoke({ question: lastMessage });
+    console.log("sqlQuery = " + sqlQuery);
 
     if (!sqlQuery || typeof sqlQuery !== "string") {
       return NextResponse.json({ response: "Failed to generate SQL query." });
