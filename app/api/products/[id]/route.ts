@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import db from "@/db/db.json"; // Ensure path is correct
+import { getProductById } from "@/lib/fetcher"; // Import the correct functions
 
-// API Route: `/api/products/[id]`
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } } // Extracts ID from params
+  { params }: { params: { id: string } }
 ) {
-  const productId = Number(params.id); // Convert ID from string to number
+  const productId = Number(params.id);
 
   if (isNaN(productId)) {
     return NextResponse.json(
@@ -15,14 +14,20 @@ export async function GET(
     );
   }
 
-  console.log(`Fetching product by ID: ${productId}`);
+  try {
+    const result = await getProductById(productId);
 
-  // Find product in database
-  const product = db.products.find((p) => p.id === productId);
+    if (result.data === null) {
+      // Check if data is null (product not found)
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
 
-  if (!product) {
-    return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    return NextResponse.json({ data: result.data }, { status: 200 }); // Return result.data
+  } catch (error) {
+    console.error("Error fetching product:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch product" },
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json({ data: product }, { status: 200 });
 }

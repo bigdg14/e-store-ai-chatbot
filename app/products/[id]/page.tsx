@@ -26,8 +26,10 @@ export default function ProductDetail() {
 
       try {
         const response = await getProductById(productId);
-        if (!response || response.error) {
-          setError(response.error || "Product not found.");
+
+        // ✅ Fix: Extract `errorMessage` properly
+        if (!response || response.errorMessage) {
+          setError(response.errorMessage || "Product not found.");
         } else if (response.data) {
           setProduct(response.data);
         } else {

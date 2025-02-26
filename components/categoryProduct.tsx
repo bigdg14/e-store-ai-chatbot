@@ -13,7 +13,7 @@ interface CategoryProductProps {
     dimensions: string;
     capacity?: string;
   };
-  features: string[];
+  features: string[] | null | undefined; // Allow null or undefined
   price: number;
   stock: number;
 }
@@ -23,7 +23,7 @@ export default function CategoryProduct({
   title,
   image,
   specs,
-  features = [],
+  features, // Remove default value here
   price,
   stock,
 }: CategoryProductProps) {
@@ -68,9 +68,11 @@ export default function CategoryProduct({
             Features
           </h3>
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400">
-            {features.map((feature, index) => (
-              <li key={index}>{feature}</li>
-            ))}
+            {Array.isArray(features) ? ( // Check if features is an array
+              features.map((feature, index) => <li key={index}>{feature}</li>)
+            ) : (
+              <li>No features listed.</li>
+            )}
           </ul>
         </div>
       </aside>

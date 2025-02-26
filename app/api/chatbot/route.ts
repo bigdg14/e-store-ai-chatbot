@@ -1,10 +1,85 @@
 import { NextResponse } from "next/server";
-import db from "@/db/db.json";
+import { OpenAI } from "@langchain/openai";
+import { createSqlQueryChain } from "langchain/chains/sql_db";
+import { queryDatabase } from "@/lib/server/db"; // ✅ Corrected import path
+
+// ... (rest of your code)
+
+// We'll create a simple mock for the SqlDatabase
+// that implements the required interface
+const createCustomSqlDatabase = async () => {
+  // First, get table info for the database
+  const tables = await queryDatabase(`
+    SELECT table_name 
+    FROM information_schema.tables 
+    WHERE table_schema = 'public'
+  `);
+
+  // Build table schema information
+  const tableInfo = [];
+
+  for (const tableRow of tables) {
+    const tableName = tableRow.table_name;
+
+    // Get column information
+    const columns = await queryDatabase(
+      `
+      SELECT column_name, data_type 
+      FROM information_schema.columns 
+      WHERE table_name = $1
+    `,
+      [tableName]
+    );
+
+    // Get sample data
+    const sampleRows = await queryDatabase(`
+      SELECT * FROM "${tableName}" LIMIT 3
+    `);
+
+    tableInfo.push({
+      tableName,
+      columns: columns.map((col) => ({
+        name: col.column_name,
+        type: col.data_type,
+      })),
+      sampleRows,
+    });
+  }
+
+  // Create a mock database object that mimics SqlDatabase
+  const mockDb = {
+    // Store the table information
+    _tableInfo: tableInfo,
+
+    // Implement the query method
+    async query(query: string): Promise<any[]> {
+      return await queryDatabase(query);
+    },
+
+    // Implement getTableInfo method
+    async getTableInfo(): Promise<any[]> {
+      return this._tableInfo;
+    },
+
+    // Add any other required methods/properties
+    appDataSourceOptions: {
+      type: "postgres",
+    },
+
+    // The dialect for SQL generation
+    dialect: "postgres",
+
+    // Sample rows in table info
+    sampleRowsInTableInfo: 3,
+  };
+
+  return mockDb;
+};
 
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
-    const lastMessage = messages[messages.length - 1]?.content.toLowerCase();
+    const lastMessage = messages[messages.length - 1]?.content;
 
     if (!lastMessage) {
       return NextResponse.json({
@@ -12,86 +87,57 @@ export async function POST(req: Request) {
       });
     }
 
-    // Product Count
-    if (lastMessage.includes("how many products")) {
+    console.log("🔍 User Query:", lastMessage);
+
+    // ✅ Initialize OpenAI Model
+    const model = new OpenAI({
+      openAIApiKey: process.env.OPENAI_API_KEY!,
+      modelName: "gpt-4o",
+    });
+
+    // Create our custom database
+    const db = await createCustomSqlDatabase();
+
+    // ✅ Generate SQL query using LangChain
+    const chain = await createSqlQueryChain({
+      llm: model,
+      db: db as any, // Use type assertion to satisfy TypeScript
+      dialect: "postgres",
+    });
+
+    const sqlQuery = await chain.run(lastMessage);
+
+    if (!sqlQuery || typeof sqlQuery !== "string") {
+      return NextResponse.json({ response: "Failed to generate SQL query." });
+    }
+
+    if (!sqlQuery.toLowerCase().startsWith("select")) {
       return NextResponse.json({
-        response: `We have ${db.products.length} products.`,
+        response: "❌ Only SELECT queries are allowed.",
       });
     }
 
-    // Products with Specific Text in Description or Title
-    if (lastMessage.includes("products with")) {
-      const searchText = lastMessage.split("products with")[1]?.trim();
-      if (searchText) {
-        const matchedProducts = db.products.filter(
-          (product) =>
-            product.title.toLowerCase().includes(searchText) ||
-            product.description?.toLowerCase().includes(searchText)
-        );
-        if (matchedProducts.length > 0) {
-          const responseMessage = matchedProducts
-            .map((p) => `✅ *${p.title}* - ${p.description} ($${p.price})`)
-            .join("\n\n");
-          return NextResponse.json({ response: responseMessage });
-        } else {
-          return NextResponse.json({
-            response: `No products found with "${searchText}" in their description or title.`,
-          });
-        }
-      }
+    console.log("📝 Generated SQL:", sqlQuery);
+
+    // ✅ Run the query
+    const result = await queryDatabase(sqlQuery);
+
+    if (!result || result.length === 0) {
+      return NextResponse.json({ response: "No matching products found." });
     }
 
-    // Products Related to Specific Text
-    if (lastMessage.includes("products related to")) {
-      const searchText = lastMessage.split("products related to")[1]?.trim();
-      if (searchText) {
-        const matchedProducts = db.products.filter(
-          (product) =>
-            product.title.toLowerCase().includes(searchText) ||
-            product.description?.toLowerCase().includes(searchText)
-        );
-        if (matchedProducts.length > 0) {
-          const responseMessage = matchedProducts
-            .map((p) => `✅ *${p.title}* - ${p.description} ($${p.price})`)
-            .join("\n\n");
-          return NextResponse.json({ response: responseMessage });
-        } else {
-          return NextResponse.json({
-            response: `No products found related to "${searchText}".`,
-          });
-        }
-      }
-    }
+    const formattedResponse = result
+      .map((row) =>
+        Object.entries(row)
+          .map(([key, value]) => `**${key}**: ${value}`)
+          .join("\n")
+      )
+      .join("\n\n");
 
-    // Product Count by Category
-    if (lastMessage.includes("how many")) {
-      const category = lastMessage.split("how many")[1]?.trim();
-      if (category) {
-        const categoryId = db.categories.find(
-          (c) => c.title.toLowerCase() === category
-        )?.id;
-        if (categoryId) {
-          const productCount = db.products.filter(
-            (p) => p.catId === categoryId
-          ).length;
-          return NextResponse.json({
-            response: `There are ${productCount} ${category} products.`,
-          });
-        } else {
-          return NextResponse.json({
-            response: `Category "${category}" not found.`,
-          });
-        }
-      }
-    }
-
-    // Default Response
-    return NextResponse.json({
-      response:
-        "I can answer questions about our products. Ask me something like 'How many products are there?' or 'Are there any phones?'",
-    });
+    return NextResponse.json({ response: formattedResponse });
   } catch (error) {
-    console.error("Error in chatbot API:", error);
+    console.error("🚨 LangChain Query Error:", error);
+
     return NextResponse.json({
       response: "Something went wrong. Please try again.",
     });

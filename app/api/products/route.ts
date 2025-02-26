@@ -1,57 +1,37 @@
 import { NextResponse } from "next/server";
-import db from "@/db/db.json"; // Ensure path is correct
+import { Pool } from "pg";
+import dotenv from "dotenv";
+dotenv.config();
 
-// API Route: `/api/products`
-export async function GET(req: Request) {
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
+});
+
+async function queryDatabase(query: string, params: any[] = []) {
+  const client = await pool.connect();
   try {
-    const { searchParams } = new URL(req.url);
-    const query = searchParams.get("q")?.toLowerCase(); // Search query
-    const categoryId = searchParams.get("catId"); // Category ID filter
-
-    // ✅ If no query and no category filter, return all products
-    if (!query && !categoryId) {
-      return NextResponse.json({ data: db.products }, { status: 200 });
-    }
-
-    console.log("🔍 Server: Search Query →", query);
-    console.log("🗂 Server: Category Filter →", categoryId);
-
-    // ✅ Ensure `db.products` is an array
-    if (!db.products || !Array.isArray(db.products)) {
-      return NextResponse.json({
-        data: [],
-        errorMessage: "No products available",
-      });
-    }
-
-    let filteredProducts = db.products;
-
-    // 🔎 Search filter (title or description)
-    if (query) {
-      filteredProducts = filteredProducts.filter(
-        (product) =>
-          product.title.toLowerCase().includes(query) ||
-          product.description?.toLowerCase().includes(query)
-      );
-    }
-
-    // 📂 Category filter
-    if (categoryId) {
-      const categoryNum = Number(categoryId);
-      if (!isNaN(categoryNum)) {
-        filteredProducts = filteredProducts.filter(
-          (product) => product.catId === categoryNum
-        );
-      }
-    }
-
-    console.log("✅ Server: Filtered Products →", filteredProducts.length);
-
-    return NextResponse.json({ data: filteredProducts, errorMessage: null });
+    const { rows } = await client.query(query, params);
+    return rows;
   } catch (error) {
-    console.error("❌ Server Error:", error);
+    console.error("Database Query Error:", error);
+    return [];
+  } finally {
+    client.release();
+  }
+}
+
+export async function GET() {
+  try {
+    //await connectDB(); // Ensure the connection is established
+    const result = await queryDatabase("SELECT * FROM products");
+    return NextResponse.json({ data: result }, { status: 200 });
+  } catch (error) {
+    console.error("Error fetching products:", error);
     return NextResponse.json(
-      { data: [], errorMessage: "Server error" },
+      { error: "Failed to fetch products" },
       { status: 500 }
     );
   }

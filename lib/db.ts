@@ -1,5 +1,6 @@
-import { queryDatabase } from "@/lib/server/db"; // ✅ Uses server-only database module
+import { queryDatabase } from "@/lib/server/db"; // ✅ Import server-side module
 
+// 🔹 Fetch all categories
 export async function getCategories() {
   try {
     console.log("📂 Fetching categories...");
@@ -11,6 +12,7 @@ export async function getCategories() {
   }
 }
 
+// 🔹 Fetch a single category by ID
 export async function getCategoryById(categoryId: number) {
   try {
     console.log("📂 Fetching category details for:", categoryId);
@@ -27,6 +29,7 @@ export async function getCategoryById(categoryId: number) {
   }
 }
 
+// 🔹 Fetch all products (optionally filter by category ID)
 export async function getProducts(categoryId?: number) {
   try {
     console.log("🛒 Fetching products for category:", categoryId);
@@ -42,6 +45,7 @@ export async function getProducts(categoryId?: number) {
   }
 }
 
+// 🔹 Fetch a single product by ID
 export async function getProductById(id: number) {
   try {
     console.log("🌍 API Call → Fetching product by ID:", id);
@@ -58,6 +62,7 @@ export async function getProductById(id: number) {
   }
 }
 
+// 🔹 Search products by query (matches title or description)
 export async function getProductsByQuery(query: string) {
   try {
     console.log("🔍 Searching products for query:", query);
