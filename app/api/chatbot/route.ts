@@ -1,19 +1,12 @@
 import { NextResponse } from "next/server";
 import { ChatOpenAI } from "@langchain/openai";
 import { createSqlQueryChain } from "langchain/chains/sql_db";
-import { queryDatabase } from "@/lib/server/db"; // ✅ Corrected import path
-import {
-  ChatPromptTemplate,
-  MessagesPlaceholder,
-} from "@langchain/core/prompts";
-import { HumanMessage } from "@langchain/core/messages";
+import { queryDatabase } from "@/lib/server/db";
+import { formatWithAI } from "./ai-formatter";
 
-// ... (rest of your code)
-
-// We'll create a simple mock for the SqlDatabase
-// that implements the required interface
+/* Creates a custom database adapter for LangChain to work with our database */
 const createCustomSqlDatabase = async () => {
-  // First, get table info for the database
+  // Get table information
   const tables = await queryDatabase(`
     SELECT table_name 
     FROM information_schema.tables 
@@ -51,38 +44,34 @@ const createCustomSqlDatabase = async () => {
     });
   }
 
-  // Create a mock database object that mimics SqlDatabase
+  // Create a mock database object that implements the interface LangChain expects
   const mockDb = {
-    // Store the table information
     _tableInfo: tableInfo,
 
-    // Implement the query method
     async query(query: string): Promise<any[]> {
       return await queryDatabase(query);
     },
 
-    // Implement getTableInfo method
     async getTableInfo(): Promise<any[]> {
       return this._tableInfo;
     },
 
-    // Add any other required methods/properties
     appDataSourceOptions: {
       type: "postgres",
     },
 
-    // The dialect for SQL generation
     dialect: "postgres",
 
-    // Sample rows in table info
     sampleRowsInTableInfo: 3,
   };
 
   return mockDb;
 };
 
+/* Chatbot API endpoint */
 export async function POST(req: Request) {
   try {
+    // Extract user message from request
     const { messages } = await req.json();
     const lastMessage = messages[messages.length - 1]?.content;
 
@@ -94,58 +83,74 @@ export async function POST(req: Request) {
 
     console.log("🔍 User Query:", lastMessage);
 
-    // ✅ Initialize OpenAI Model
+    // Enhanced prompt to get better SQL generation
+    const enhancedQuestion = `${lastMessage} 
+    IMPORTANT: Please respond ONLY with a valid PostgreSQL SELECT query. 
+    Do not include any explanations, markdown formatting, quotes, or additional text.
+    Just return the raw SQL query that answers the question.
+    Focus on products, categories, stock, and pricing information.`;
+
+    // Initialize OpenAI Model for SQL generation
     const model = new ChatOpenAI({
       openAIApiKey: process.env.OPENAI_API_KEY!,
       modelName: "gpt-4o",
+      temperature: 0.1, // Low temperature for consistent SQL generation
     });
 
     // Create our custom database
     const db = await createCustomSqlDatabase();
 
-    // ✅ Generate SQL query using LangChain
+    // Generate SQL query using LangChain
     const chain = await createSqlQueryChain({
       llm: model,
-      db: db as any, // Use type assertion to satisfy TypeScript
+      db: db as any, 
       dialect: "postgres",
     });
 
-    const sqlQuery = await chain.invoke({ question: lastMessage });
-    console.log("sqlQuery = " + sqlQuery);
+    const sqlQuery = await chain.invoke({ question: enhancedQuestion });
 
     if (!sqlQuery || typeof sqlQuery !== "string") {
-      return NextResponse.json({ response: "Failed to generate SQL query." });
-    }
-
-    if (!sqlQuery.toLowerCase().startsWith("select")) {
       return NextResponse.json({
-        response: "❌ Only SELECT queries are allowed.",
+        response:
+          "I'm having trouble understanding that question. Could you try asking about our products in a different way?",
       });
     }
 
-    console.log("📝 Generated SQL:", sqlQuery);
+    // Clean up the SQL query
+    let queryToExecute = sqlQuery
+      .replace(/```sql|```/g, "") 
+      .trim();
 
-    // ✅ Run the query
-    const result = await queryDatabase(sqlQuery);
-
-    if (!result || result.length === 0) {
-      return NextResponse.json({ response: "No matching products found." });
+    // Security validation - only allow SELECT queries
+    if (!queryToExecute.toLowerCase().startsWith("select")) {
+      return NextResponse.json({
+        response:
+          "I can only provide information about our products. How can I help you find what you're looking for?",
+      });
     }
 
-    const formattedResponse = result
-      .map((row) =>
-        Object.entries(row)
-          .map(([key, value]) => `**${key}**: ${value}`)
-          .join("\n")
-      )
-      .join("\n\n");
+    // Execute the query
+    console.log("Generated SQL:", queryToExecute);
+    const result = await queryDatabase(queryToExecute);
+
+    // Handle empty results
+    if (!result || result.length === 0) {
+      return NextResponse.json({
+        response:
+          "I couldn't find any products matching your description. Would you like to browse our categories instead?",
+      });
+    }
+
+    // Use AI to format the response in a user-friendly way
+    const formattedResponse = await formatWithAI(result, lastMessage);
 
     return NextResponse.json({ response: formattedResponse });
   } catch (error) {
-    console.error("🚨 LangChain Query Error:", error);
+    console.error("Chatbot Error:", error);
 
     return NextResponse.json({
-      response: "Something went wrong. Please try again.",
+      response:
+        "I'm having trouble processing your request right now. Please try asking in a different way or check back later.",
     });
   }
 }
