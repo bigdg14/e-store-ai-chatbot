@@ -1,12 +1,18 @@
+// app/api/chatbot/route.ts
 import { NextResponse } from "next/server";
 import { ChatOpenAI } from "@langchain/openai";
 import { createSqlQueryChain } from "langchain/chains/sql_db";
 import { queryDatabase } from "@/lib/server/db";
-import { formatWithAI } from "./ai-formatter";
+import {
+  ChatPromptTemplate,
+  MessagesPlaceholder,
+} from "@langchain/core/prompts";
+import { HumanMessage } from "@langchain/core/messages";
 
-/* Creates a custom database adapter for LangChain to work with our database */
+// We'll create a simple mock for the SqlDatabase
+// that implements the required interface
 const createCustomSqlDatabase = async () => {
-  // Get table information
+  // First, get table info for the database
   const tables = await queryDatabase(`
     SELECT table_name 
     FROM information_schema.tables 
@@ -44,34 +50,49 @@ const createCustomSqlDatabase = async () => {
     });
   }
 
-  // Create a mock database object that implements the interface LangChain expects
+  // Create a mock database object that mimics SqlDatabase
   const mockDb = {
+    // Store the table information
     _tableInfo: tableInfo,
 
+    // Implement the query method
     async query(query: string): Promise<any[]> {
       return await queryDatabase(query);
     },
 
+    // Implement getTableInfo method
     async getTableInfo(): Promise<any[]> {
       return this._tableInfo;
     },
 
+    // Add any other required methods/properties
     appDataSourceOptions: {
       type: "postgres",
     },
 
+    // The dialect for SQL generation
     dialect: "postgres",
 
+    // Sample rows in table info
     sampleRowsInTableInfo: 3,
   };
 
   return mockDb;
 };
 
-/* Chatbot API endpoint */
+// This function safely extracts numeric values from capacity strings
+const getCapacityInLiters = (capacityStr: string): number | null => {
+  if (!capacityStr) return null;
+  
+  // Extract numeric part using regex
+  const match = capacityStr.match(/(\d+(\.\d+)?)/);
+  if (!match) return null;
+  
+  return parseFloat(match[1]);
+};
+
 export async function POST(req: Request) {
   try {
-    // Extract user message from request
     const { messages } = await req.json();
     const lastMessage = messages[messages.length - 1]?.content;
 
@@ -83,18 +104,55 @@ export async function POST(req: Request) {
 
     console.log("🔍 User Query:", lastMessage);
 
-    // Enhanced prompt to get better SQL generation
-    const enhancedQuestion = `${lastMessage} 
-    IMPORTANT: Please respond ONLY with a valid PostgreSQL SELECT query. 
-    Do not include any explanations, markdown formatting, quotes, or additional text.
-    Just return the raw SQL query that answers the question.
-    Focus on products, categories, stock, and pricing information.`;
+    // Check if we need to handle capacity filtering manually
+    const capacityMatch = lastMessage.match(/fridges?.+capacity.+(over|more than|larger than|bigger than|above)\s+(\d+)\s*(liters?|litres?|l)/i);
+    
+    if (capacityMatch) {
+      const threshold = parseInt(capacityMatch[2], 10);
+      console.log(`Detected capacity query with threshold: ${threshold} liters`);
+      
+      try {
+        // Get all fridges
+        const fridges = await queryDatabase(`
+          SELECT p.* FROM products p
+          JOIN categories c ON p.catid = c.id
+          WHERE c.title = 'Fridges'
+        `);
+        
+        // Filter manually based on capacity
+        const matchingFridges = fridges.filter(fridge => {
+          if (!fridge.specs || !fridge.specs.capacity) return false;
+          const capacityValue = getCapacityInLiters(fridge.specs.capacity);
+          return capacityValue !== null && capacityValue > threshold;
+        });
+        
+        if (matchingFridges.length === 0) {
+          return NextResponse.json({
+            response: "I couldn't find any fridges with a capacity over " + threshold + " liters. Would you like to see our entire range of fridges instead?",
+          });
+        }
+        
+        const formattedResponse = matchingFridges
+          .map(fridge => 
+            `**${fridge.title}**\nPrice: $${fridge.price}\nCapacity: ${fridge.specs.capacity}\nStock: ${fridge.stock}`
+          )
+          .join("\n\n");
+        
+        return NextResponse.json({
+          response: `I found ${matchingFridges.length} fridges with capacity over ${threshold} liters:\n\n${formattedResponse}`,
+        });
+      } catch (error) {
+        console.error("🚨 Manual Query Error:", error);
+        return NextResponse.json({
+          response: "I had trouble searching for fridges with that capacity. Would you like to see our entire range of fridges instead?",
+        });
+      }
+    }
 
-    // Initialize OpenAI Model for SQL generation
+    // For other queries, use the LLM-based approach
     const model = new ChatOpenAI({
       openAIApiKey: process.env.OPENAI_API_KEY!,
       modelName: "gpt-4o",
-      temperature: 0.1, // Low temperature for consistent SQL generation
     });
 
     // Create our custom database
@@ -103,54 +161,44 @@ export async function POST(req: Request) {
     // Generate SQL query using LangChain
     const chain = await createSqlQueryChain({
       llm: model,
-      db: db as any, 
+      db: db as any, // Use type assertion to satisfy TypeScript
       dialect: "postgres",
     });
 
-    const sqlQuery = await chain.invoke({ question: enhancedQuestion });
+    const sqlQuery = await chain.invoke({ question: lastMessage });
+    console.log("Generated SQL:", sqlQuery);
 
     if (!sqlQuery || typeof sqlQuery !== "string") {
+      return NextResponse.json({ response: "Failed to generate SQL query." });
+    }
+
+    if (!sqlQuery.toLowerCase().startsWith("select")) {
       return NextResponse.json({
-        response:
-          "I'm having trouble understanding that question. Could you try asking about our products in a different way?",
+        response: "❌ Only SELECT queries are allowed.",
       });
     }
 
-    // Clean up the SQL query
-    let queryToExecute = sqlQuery
-      .replace(/```sql|```/g, "") 
-      .trim();
+    // Run the query
+    const result = await queryDatabase(sqlQuery);
 
-    // Security validation - only allow SELECT queries
-    if (!queryToExecute.toLowerCase().startsWith("select")) {
-      return NextResponse.json({
-        response:
-          "I can only provide information about our products. How can I help you find what you're looking for?",
-      });
-    }
-
-    // Execute the query
-    console.log("Generated SQL:", queryToExecute);
-    const result = await queryDatabase(queryToExecute);
-
-    // Handle empty results
     if (!result || result.length === 0) {
-      return NextResponse.json({
-        response:
-          "I couldn't find any products matching your description. Would you like to browse our categories instead?",
-      });
+      return NextResponse.json({ response: "No matching products found." });
     }
 
-    // Use AI to format the response in a user-friendly way
-    const formattedResponse = await formatWithAI(result, lastMessage);
+    const formattedResponse = result
+      .map((row) =>
+        Object.entries(row)
+          .map(([key, value]) => `**${key}**: ${value}`)
+          .join("\n")
+      )
+      .join("\n\n");
 
     return NextResponse.json({ response: formattedResponse });
   } catch (error) {
-    console.error("Chatbot Error:", error);
+    console.error("🚨 LangChain Query Error:", error);
 
     return NextResponse.json({
-      response:
-        "I'm having trouble processing your request right now. Please try asking in a different way or check back later.",
+      response: "Something went wrong. Please try again.",
     });
   }
 }
