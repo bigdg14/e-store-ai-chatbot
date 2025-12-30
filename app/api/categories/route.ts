@@ -1,6 +1,23 @@
 import { NextResponse } from "next/server";
-import db from "@/db/db.json"; // Assuming `db.json` is moved to `src/db/db.json`
+import { getCategories } from "@/lib/fetcher";
 
 export async function GET() {
-  return NextResponse.json(db.categories);
+  try {
+    const result = await getCategories();
+
+    if (result.errorMessage) {
+      return NextResponse.json(
+        { error: result.errorMessage },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(result.data, { status: 200 });
+  } catch (error) {
+    console.error("Error fetching categories:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch categories" },
+      { status: 500 }
+    );
+  }
 }

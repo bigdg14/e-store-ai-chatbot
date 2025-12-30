@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { getCategories } from "@/lib/fetcher";
 import { Category } from "@/types/products";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,14 +16,13 @@ export default function CategoriesPage() {
     async function fetchCategories() {
       try {
         setLoading(true);
-        const response = await getCategories();
+        const response = await fetch('/api/categories');
 
-        if (response.errorMessage) {
-          setError(response.errorMessage);
-        } else if (response.data) {
-          setCategories(response.data);
+        if (response.ok) {
+          const data = await response.json();
+          setCategories(data);
         } else {
-          setError("No categories found.");
+          setError("Failed to load categories.");
         }
       } catch {
         setError("Failed to load categories. Please try again later.");
