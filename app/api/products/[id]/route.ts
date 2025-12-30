@@ -3,9 +3,10 @@ import { getProductById } from "@/lib/fetcher"; // Import the correct functions
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const productId = Number(params.id);
+  const { id } = await params;
+  const productId = Number(id);
 
   if (isNaN(productId)) {
     return NextResponse.json(
