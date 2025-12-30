@@ -26,7 +26,7 @@ export default function CategoriesPage() {
         } else {
           setError("No categories found.");
         }
-      } catch (err) {
+      } catch {
         setError("Failed to load categories. Please try again later.");
       } finally {
         setLoading(false);

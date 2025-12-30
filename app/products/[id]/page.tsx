@@ -12,7 +12,16 @@ export default function ProductDetail() {
   const { id } = useParams() as { id?: string };
   const productId = id ? Number(id) : null;
   const { addToCart } = useCart();
-  const [product, setProduct] = useState<any>(null);
+  const [product, setProduct] = useState<{
+    id: number;
+    title: string;
+    price: number;
+    image: string;
+    description?: string;
+    specs?: Record<string, string>;
+    features?: string[];
+    stock?: number;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -35,7 +44,7 @@ export default function ProductDetail() {
         } else {
           setError("Product not found.");
         }
-      } catch (err) {
+      } catch {
         setError("Error fetching product.");
       } finally {
         setLoading(false);
@@ -94,7 +103,7 @@ export default function ProductDetail() {
             ${product.price}
           </p>
           <Button
-            onClick={() => addToCart(product)}
+            onClick={() => addToCart({ ...product, quantity: 1 })}
             className="mt-4 bg-blue-500 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition"
           >
             Add to Cart
