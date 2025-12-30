@@ -25,24 +25,17 @@ export default function SearchResults() {
   const searchParams = useSearchParams();
   const query = searchParams.get("s");
 
-  console.log("🔍 SearchResults: Received query →", query);
-
   useEffect(() => {
     async function fetchData() {
       if (!query) return;
 
-      console.log("🚀 Fetching products for query:", query);
       const productsData = await getProductsByQuery(query);
-      console.log("✅ Updated State → products:", productsData);
 
       if (productsData.errorMessage) {
         setError(productsData.errorMessage);
       } else {
         setProducts(productsData);
       }
-
-      console.log("✅ Updated State → products:", productsData);
-      
     }
 
     fetchData();
