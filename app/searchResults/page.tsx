@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { getProductsByQuery } from "@/lib/fetcher";
 import CategoryProduct from "@/components/categoryProduct";
 
@@ -19,7 +19,7 @@ interface Product {
   stock: number;
 }
 
-export default function SearchResults() {
+function SearchResultsContent() {
   const [products, setProducts] = useState<Product[]>([]);
   const [error, setError] = useState<string | null>(null);
   const searchParams = useSearchParams();
@@ -42,8 +42,6 @@ export default function SearchResults() {
     fetchData();
   }, [query]);
 
-
-
   return (
     <div className="container mx-auto p-6">
       <h2 className="text-2xl font-bold mb-4">Search Results</h2>
@@ -64,5 +62,13 @@ export default function SearchResults() {
         <p className="text-gray-500">No results found.</p>
       )}
     </div>
+  );
+}
+
+export default function SearchResults() {
+  return (
+    <Suspense fallback={<div className="container mx-auto p-6">Loading search results...</div>}>
+      <SearchResultsContent />
+    </Suspense>
   );
 }
