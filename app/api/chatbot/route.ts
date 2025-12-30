@@ -56,12 +56,12 @@ const createCustomSqlDatabase = async () => {
     _tableInfo: tableInfo,
 
     // Implement the query method
-    async query(query: string): Promise<any[]> {
+    async query(query: string): Promise<unknown[]> {
       return await queryDatabase(query);
     },
 
     // Implement getTableInfo method
-    async getTableInfo(): Promise<any[]> {
+    async getTableInfo(): Promise<unknown[]> {
       return this._tableInfo;
     },
 
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
     let body;
     try {
       body = await req.json();
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { response: "Invalid request format. Please try again." },
         { status: 400 }
@@ -171,7 +171,7 @@ Answer:`
         query: async (input: { question: string }) => {
           let sqlQuery = await writeQuery.pipe(model).pipe(new StringOutputParser()).invoke({
             input: input.question,
-            table_info: await (db as any).getTableInfo(),
+            table_info: await (db as { getTableInfo: () => Promise<unknown[]> }).getTableInfo(),
           });
           console.log("🔍 Generated SQL Query (raw):", sqlQuery);
 

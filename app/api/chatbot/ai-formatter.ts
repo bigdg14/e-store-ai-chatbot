@@ -2,7 +2,7 @@ import { ChatOpenAI } from "@langchain/openai";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 
 export async function formatWithAI(
-  results: any[],
+  results: Record<string, unknown>[],
   userQuery: string
 ): Promise<string> {
   // Skip AI formatting if there are no results
@@ -65,7 +65,7 @@ export async function formatWithAI(
 }
 
 /* Basic fallback formatter in case AI formatting fails */
-function basicFormatter(results: any[], userQuery: string): string {
+function basicFormatter(results: Record<string, unknown>[], userQuery: string): string {
   // Count results
   if (results.length === 1 && results[0].count !== undefined) {
     return `There ${results[0].count === 1 ? "is" : "are"} ${
