@@ -19,7 +19,7 @@ export default function About() {
       <div className="max-w-4xl mx-auto">
         {/* Page Header */}
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8 text-center">
-          About E-Store
+          About SmartCart
         </h1>
 
         {/* Main Content */}
@@ -28,7 +28,7 @@ export default function About() {
             Our Mission
           </h2>
           <p className="text-gray-700 dark:text-gray-300 mb-6">
-            E-Store is a modern e-commerce platform built with cutting-edge web
+            SmartCart is a modern e-commerce platform built with cutting-edge web
             technologies. Our mission is to provide a seamless shopping
             experience with intuitive navigation, responsive design, and
             intelligent product recommendations powered by AI.

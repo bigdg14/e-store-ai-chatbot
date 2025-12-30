@@ -296,14 +296,11 @@ export default function Checkout() {
 
     if (isValid) {
       setIsSubmitting(true);
-      console.log("Order Data:", form);
 
       setTimeout(() => {
         clearCart();
         router.push("/orderConfirmation");
       }, 1500);
-    } else {
-      console.log("Form validation failed", errors);
     }
   };
 

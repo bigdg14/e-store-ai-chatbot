@@ -44,61 +44,116 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Welcome Heading */}
-      <h1 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-8">
-        Welcome to E-Store
-      </h1>
-
-      {/* Featured Product Section */}
-      {featuredProduct && (
-        <div className="flex flex-col md:flex-row items-center bg-gray-100 dark:bg-gray-800 p-6 rounded-lg shadow-md mb-10">
-          {/* Product Image */}
-          <Image
-            src={`/images/${featuredProduct.image}`}
-            alt={featuredProduct.title}
-            width={400}
-            height={400}
-            className="w-full md:w-1/3 rounded-lg"
-          />
-
-          {/* Product Details */}
-          <div className="mt-6 md:mt-0 md:ml-6 flex-1">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-              {featuredProduct.title}
-            </h2>
-            <p className="text-gray-700 dark:text-gray-300 mt-2">
-              {featuredProduct.description}
+    <div className="min-h-screen">
+      {/* Hero Section */}
+      <div className="bg-gradient-to-br from-primary/10 via-background to-primary/5 border-b">
+        <div className="container mx-auto px-4 py-16 md:py-24">
+          <div className="text-center max-w-3xl mx-auto">
+            <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+              Welcome to SmartCart
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground mb-8">
+              Shop smarter with our AI-powered shopping assistant
             </p>
-            <p className="text-xl font-bold text-blue-500 mt-4">
-              ${featuredProduct.price}
-            </p>
-            <Link
-              href={`/products/${featuredProduct.id}`}
-              className="mt-4 inline-block bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg transition-all"
-            >
-              View Product
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/categories"
+                className="inline-flex items-center justify-center px-8 py-3 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl"
+              >
+                Browse Products
+              </Link>
+              <Link
+                href="/about"
+                className="inline-flex items-center justify-center px-8 py-3 bg-card text-card-foreground font-semibold rounded-lg hover:bg-accent transition-all border"
+              >
+                Learn More
+              </Link>
+            </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Categories Section */}
-      <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-        Shop by Category
-      </h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {categories.map((category) => (
-          <Link
-            key={category.id}
-            href={`/categories/${category.id}`}
-            className="block p-4 border rounded-lg shadow-md hover:shadow-lg transition-all bg-white dark:bg-gray-900"
-          >
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {category.title}
-            </h2>
-          </Link>
-        ))}
+      <div className="container mx-auto px-4 py-12">
+        {/* Featured Product Section */}
+        {featuredProduct && (
+          <div className="mb-16">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-3xl font-bold">Featured Product</h2>
+              <div className="h-1 flex-1 ml-6 bg-gradient-to-r from-primary/50 to-transparent rounded-full"></div>
+            </div>
+            <div className="bg-card border rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+              <div className="flex flex-col md:flex-row">
+                {/* Product Image */}
+                <div className="md:w-2/5 bg-muted/30 p-8 flex items-center justify-center">
+                  <Image
+                    src={`/images/${featuredProduct.image}`}
+                    alt={featuredProduct.title}
+                    width={400}
+                    height={400}
+                    className="w-full h-auto rounded-lg object-contain"
+                  />
+                </div>
+
+                {/* Product Details */}
+                <div className="md:w-3/5 p-8">
+                  <div className="inline-block px-3 py-1 bg-primary/10 text-primary text-sm font-semibold rounded-full mb-4">
+                    Special Offer
+                  </div>
+                  <h2 className="text-3xl font-bold mb-4">
+                    {featuredProduct.title}
+                  </h2>
+                  <p className="text-muted-foreground text-lg mb-6 leading-relaxed">
+                    {featuredProduct.description}
+                  </p>
+                  <div className="flex items-baseline gap-2 mb-6">
+                    <span className="text-4xl font-bold text-primary">
+                      ${featuredProduct.price}
+                    </span>
+                    <span className="text-muted-foreground line-through">
+                      ${(featuredProduct.price * 1.2).toFixed(2)}
+                    </span>
+                  </div>
+                  <Link
+                    href={`/products/${featuredProduct.id}`}
+                    className="inline-flex items-center justify-center px-8 py-3 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 transition-all shadow-md hover:shadow-lg"
+                  >
+                    View Details →
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Categories Section */}
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-3xl font-bold">Shop by Category</h2>
+            <div className="h-1 flex-1 ml-6 bg-gradient-to-r from-primary/50 to-transparent rounded-full"></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {categories.map((category) => (
+              <Link
+                key={category.id}
+                href={`/categories/${category.id}`}
+                className="group relative overflow-hidden bg-card border rounded-xl p-8 hover:shadow-lg transition-all duration-300"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative">
+                  <h3 className="text-2xl font-bold mb-2 group-hover:text-primary transition-colors">
+                    {category.title}
+                  </h3>
+                  <p className="text-muted-foreground group-hover:text-foreground transition-colors">
+                    Explore our collection
+                  </p>
+                  <div className="mt-4 inline-flex items-center text-primary font-semibold group-hover:translate-x-1 transition-transform">
+                    Browse →
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -3,7 +3,6 @@ import { queryDatabase } from "@/lib/server/db"; // ✅ Import server-side modul
 // Fetch all categories
 export async function getCategories() {
   try {
-    console.log("Fetching categories...");
     const categories = await queryDatabase("SELECT * FROM categories");
     return { data: categories, errorMessage: null };
   } catch (error) {
@@ -15,7 +14,6 @@ export async function getCategories() {
 // Fetch a single category by ID
 export async function getCategoryById(categoryId: number) {
   try {
-    console.log("Fetching category details for:", categoryId);
     const category = await queryDatabase(
       "SELECT * FROM categories WHERE id = $1",
       [categoryId]
@@ -32,7 +30,6 @@ export async function getCategoryById(categoryId: number) {
 // Fetch all products (optionally filter by category ID)
 export async function getProducts(categoryId?: number) {
   try {
-    console.log("🛒 Fetching products for category:", categoryId);
     const query = categoryId
       ? "SELECT * FROM products WHERE catId = $1"
       : "SELECT * FROM products";
@@ -48,7 +45,6 @@ export async function getProducts(categoryId?: number) {
 // Fetch a single product by ID
 export async function getProductById(id: number) {
   try {
-    console.log("🌍 API Call → Fetching product by ID:", id);
     const product = await queryDatabase(
       "SELECT * FROM products WHERE id = $1",
       [id]
@@ -65,10 +61,9 @@ export async function getProductById(id: number) {
 // Search products by query (matches title or description)
 export async function getProductsByQuery(query: string) {
   try {
-    console.log("Searching products for query:", query);
     const searchQuery = `
-      SELECT * FROM products 
-      WHERE LOWER(title) LIKE LOWER($1) 
+      SELECT * FROM products
+      WHERE LOWER(title) LIKE LOWER($1)
       OR LOWER(description) LIKE LOWER($1)
     `;
     const products = await queryDatabase(searchQuery, [`%${query}%`]);

@@ -93,23 +93,52 @@ const getCapacityInLiters = (capacityStr: string): number | null => {
 
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json();
+    // Validate request body
+    let body;
+    try {
+      body = await req.json();
+    } catch (error) {
+      return NextResponse.json(
+        { response: "Invalid request format. Please try again." },
+        { status: 400 }
+      );
+    }
+
+    const { messages } = body;
+
+    // Validate messages array
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return NextResponse.json(
+        { response: "Please provide a valid message." },
+        { status: 400 }
+      );
+    }
+
     const lastMessage = messages[messages.length - 1]?.content;
 
-    if (!lastMessage) {
+    if (!lastMessage || typeof lastMessage !== "string") {
       return NextResponse.json({
         response: "Please ask a question about our products.",
       });
     }
 
-    console.log("🔍 User Query:", lastMessage);
+    // Check for API key
+    if (!process.env.OPENAI_API_KEY) {
+      console.error("OPENAI_API_KEY is not configured");
+      return NextResponse.json(
+        {
+          response:
+            "AI service is currently unavailable. Please try again later.",
+        },
+        { status: 503 }
+      );
+    }
 
     // Check if we need to handle capacity filtering manually
     const capacityMatch = lastMessage.match(/fridges?.+capacity.+(over|more than|larger than|bigger than|above)\s+(\d+)\s*(liters?|litres?|l)/i);
-    
+
     if (capacityMatch) {
       const threshold = parseInt(capacityMatch[2], 10);
-      console.log(`Detected capacity query with threshold: ${threshold} liters`);
       
       try {
         // Get all fridges
@@ -166,7 +195,6 @@ export async function POST(req: Request) {
     });
 
     const sqlQuery = await chain.invoke({ question: lastMessage });
-    console.log("Generated SQL:", sqlQuery);
 
     if (!sqlQuery || typeof sqlQuery !== "string") {
       return NextResponse.json({ response: "Failed to generate SQL query." });
@@ -197,8 +225,46 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("🚨 LangChain Query Error:", error);
 
-    return NextResponse.json({
-      response: "Something went wrong. Please try again.",
-    });
+    // More specific error messages based on error type
+    if (error instanceof Error) {
+      // Check for specific error types
+      if (error.message.includes("API key")) {
+        return NextResponse.json(
+          {
+            response:
+              "AI service configuration error. Please contact support.",
+          },
+          { status: 500 }
+        );
+      }
+
+      if (error.message.includes("timeout")) {
+        return NextResponse.json(
+          {
+            response:
+              "Request timed out. Please try with a simpler question.",
+          },
+          { status: 504 }
+        );
+      }
+
+      if (error.message.includes("rate limit")) {
+        return NextResponse.json(
+          {
+            response:
+              "Too many requests. Please wait a moment and try again.",
+          },
+          { status: 429 }
+        );
+      }
+    }
+
+    return NextResponse.json(
+      {
+        response:
+          "I encountered an error processing your request. Please try rephrasing your question.",
+      },
+      { status: 500 }
+    );
   }
 }

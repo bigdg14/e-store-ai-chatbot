@@ -63,7 +63,6 @@ export default function Contact() {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!disabled) {
-      console.log("Form submitted:", formData);
       setSubmitted(true);
       // In a real app, you would send the data to your backend here
       // For now, we'll just simulate a successful submission

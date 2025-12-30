@@ -10,7 +10,6 @@ export default function Search() {
   useEffect(() => {
     const delay = setTimeout(() => {
       if (searchTerm.trim().length > 0) {
-        console.log("Pushing search query:", searchTerm); // Debug log
         router.push(`/searchResults?s=${encodeURIComponent(searchTerm)}`);
       }
     }, 500);

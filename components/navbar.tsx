@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Menu, ShoppingCart, Search, Sun, Moon, X } from "lucide-react";
+import { Menu, ShoppingCart, Search, Sun, Moon, X, LogIn, LogOut } from "lucide-react";
 import { useCart } from "@/context/cartContext";
 import { Button } from "./ui/button";
 import { useRouter } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,6 +15,7 @@ export default function Navbar() {
   const [searchTerm, setSearchTerm] = useState("");
   const { cart } = useCart();
   const router = useRouter();
+  const { data: session } = useSession();
 
   useEffect(() => {
     const storedTheme = localStorage.getItem("theme");
@@ -52,70 +54,91 @@ export default function Navbar() {
   const submitSearch = () => {
     if (searchTerm.trim().length === 0) return; // Prevents empty searches
 
-    console.log("🔍 Submitting search for:", searchTerm); // Debugging log
     router.push(`/searchResults?s=${encodeURIComponent(searchTerm)}`);
   };
 
 
 
   return (
-    <header className="bg-white dark:bg-gray-900 border-b border-[#ffffff] shadow-md transition-all">
+    <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b shadow-sm transition-all">
       <nav className="container mx-auto px-4 py-4 flex justify-between items-center relative">
         {/* Logo */}
-        <Link href="/" className="text-xl font-bold text-[#e5c888]">
-          E-Store
+        <Link href="/" className="text-xl font-bold text-primary hover:text-primary/80 transition-colors flex items-center gap-2">
+          <span className="text-2xl">🛒</span>
+          SmartCart
         </Link>
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center space-x-6">
-          <Link href="/about" className="hover:text-[#947ac0] transition-all">
+          <Link href="/about" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
             About
           </Link>
           <Link
             href="/categories"
-            className="hover:text-[#947ac0] transition-all"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             Categories
           </Link>
-          <Link href="/contact" className="hover:text-[#947ac0] transition-all">
+          <Link href="/contact" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
             Contact
           </Link>
 
           {/* Desktop Search Bar */}
-          <div className="hidden md:flex items-center border rounded-md px-3 py-2 relative">
+          <div className="hidden md:flex items-center bg-muted/50 border rounded-lg px-3 py-2 relative focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+            <Search size={18} className="text-muted-foreground mr-2" />
             <input
               type="text"
               placeholder="Search products..."
-              className="w-64 bg-transparent outline-none text-black dark:text-white"
+              className="w-48 bg-transparent outline-none placeholder:text-muted-foreground"
               value={searchTerm}
               onChange={handleSearch}
-              onKeyDown={(e) => e.key === "Enter" && submitSearch()} // 🔹 Press Enter to search
+              onKeyDown={(e) => e.key === "Enter" && submitSearch()}
             />
-            <Button
-              onClick={submitSearch}
-              className="absolute right-3 text-[#e5c888] dark:text-[#947ac0]"
-            >
-              <Search size={20} />
-            </Button>
           </div>
 
           {/* Dark Mode Toggle */}
-          <Button onClick={toggleDarkMode} className="p-2 rounded-md">
+          <Button
+            onClick={toggleDarkMode}
+            variant="ghost"
+            size="icon"
+            className="rounded-full"
+          >
             {darkMode ? (
-              <Sun className="text-[#e5c888] dark:text-white hover:text-white" />
+              <Sun size={20} className="text-muted-foreground hover:text-foreground transition-colors" />
             ) : (
-              <Moon className="text-[#e5c888] dark:text-[#947ac0] hover:text-[#947ac0]" />
+              <Moon size={20} className="text-muted-foreground hover:text-foreground transition-colors" />
             )}
           </Button>
 
+          {/* Auth Button */}
+          {session ? (
+            <Button
+              onClick={() => signOut()}
+              variant="ghost"
+              className="flex items-center gap-2"
+            >
+              <LogOut size={18} />
+              <span className="hidden lg:inline">Sign Out</span>
+            </Button>
+          ) : (
+            <Link href="/auth/signin">
+              <Button className="flex items-center gap-2">
+                <LogIn size={18} />
+                <span className="hidden lg:inline">Sign In</span>
+              </Button>
+            </Link>
+          )}
+
           {/* Cart */}
           <Link href="/cart" className="relative">
-            <ShoppingCart className="text-[#e5c888] hover:text-[#947ac0] transition-all" />
-            {cart.length > 0 && (
-              <span className="text-[#e5c888] dark:text-[#e5c888] hover:text-[#947ac0] transition-all">
-                {cart.length}
-              </span>
-            )}
+            <Button variant="ghost" size="icon" className="relative rounded-full">
+              <ShoppingCart size={20} />
+              {cart.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                  {cart.length}
+                </span>
+              )}
+            </Button>
           </Link>
         </div>
 
@@ -192,10 +215,7 @@ export default function Navbar() {
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-bold">Search</h2>
               <Button
-                onClick={() => {
-                  console.log("Opening search modal..."); // Debugging log
-                  setSearchOpen(true);
-                }}
+                onClick={() => setSearchOpen(false)}
               >
                 <X />
               </Button>

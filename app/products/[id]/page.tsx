@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation"; // ✅ Import useRouter
+import { useParams, useRouter } from "next/navigation";
 import { getProductById } from "@/lib/fetcher";
 import { useCart } from "@/context/cartContext";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ProductDetail() {
   const { id } = useParams() as { id?: string };
@@ -14,7 +15,7 @@ export default function ProductDetail() {
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const router = useRouter(); // ✅ Initialize router
+  const router = useRouter();
 
   useEffect(() => {
     async function fetchProduct() {
@@ -27,7 +28,6 @@ export default function ProductDetail() {
       try {
         const response = await getProductById(productId);
 
-        // ✅ Fix: Extract `errorMessage` properly
         if (!response || response.errorMessage) {
           setError(response.errorMessage || "Product not found.");
         } else if (response.data) {
@@ -45,15 +45,31 @@ export default function ProductDetail() {
     fetchProduct();
   }, [productId]);
 
-  if (loading) return <p className="text-gray-500">Loading...</p>;
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Skeleton className="w-20 h-10 mb-6" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Skeleton className="w-full h-[500px] rounded-lg" />
+          <div className="space-y-4">
+            <Skeleton className="h-10 w-3/4" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-8 w-24 mt-4" />
+            <Skeleton className="h-12 w-32 mt-4" />
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (error) return <p className="text-red-500">{error}</p>;
   if (!product) return <p className="text-gray-500">Product not found.</p>;
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* 🔙 Back Button */}
       <Button
-        onClick={() => router.back()} // ✅ Navigate back
+        onClick={() => router.back()}
         className="mb-6 px-4 py-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-black dark:text-white rounded-lg shadow-md transition"
       >
         ← Back
