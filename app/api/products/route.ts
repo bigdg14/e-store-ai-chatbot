@@ -10,7 +10,7 @@ const pool = new Pool({
   },
 });
 
-async function queryDatabase(query: string, params: any[] = []) {
+async function queryDatabase(query: string, params: unknown[] = []) {
   const client = await pool.connect();
   try {
     const { rows } = await client.query(query, params);
