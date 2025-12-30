@@ -29,12 +29,13 @@ export default function SearchResults() {
     async function fetchData() {
       if (!query) return;
 
-      const productsData = await getProductsByQuery(query);
-
-      if (productsData.errorMessage) {
-        setError(productsData.errorMessage);
-      } else {
+      try {
+        const productsData = await getProductsByQuery(query);
         setProducts(productsData);
+        setError(null);
+      } catch {
+        setError("Failed to fetch search results");
+        setProducts([]);
       }
     }
 
