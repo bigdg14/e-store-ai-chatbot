@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/cartContext";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 
 interface CategoryProductProps {
@@ -33,11 +34,13 @@ export default function CategoryProduct({
   return (
     <article className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white dark:bg-gray-800 p-6 shadow-md rounded-lg border border-gray-200 dark:border-gray-700">
       {/* ✅ Column 1: Product Image */}
-      <figure className="flex justify-center items-center">
-        <img
+      <figure className="flex justify-center items-center relative w-full h-64">
+        <Image
           src={`/images/${image}`}
           alt={title}
-          className="w-full h-auto max-w-[500px] rounded-md shadow-md"
+          fill
+          className="object-contain rounded-md shadow-md"
+          sizes="(max-width: 768px) 100vw, 33vw"
         />
       </figure>
 

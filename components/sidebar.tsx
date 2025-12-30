@@ -20,7 +20,7 @@ export default function Sidebar() {
         }
 
         setCategories(response.data);
-      } catch (err) {
+      } catch {
         setError("Failed to load categories");
         setCategories([]); // Ensure categories remains a valid empty array
       }

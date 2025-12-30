@@ -71,8 +71,8 @@ export default function Chatbot() {
     }
   };
 
-  // Use a suggestion as input
-  const useSuggestion = (suggestion: string) => {
+  // Apply a suggestion as input
+  const applySuggestion = (suggestion: string) => {
     setInput(suggestion);
   };
 
@@ -105,7 +105,7 @@ export default function Chatbot() {
               <div className="space-y-4">
                 <div className="bg-gray-200 dark:bg-gray-800 p-3 rounded-lg inline-block max-w-[85%]">
                   <p className="text-gray-800 dark:text-gray-200">
-                    Hi there! I'm your store assistant. What can I help you with
+                    Hi there! I&apos;m your store assistant. What can I help you with
                     today?
                   </p>
                 </div>
@@ -115,7 +115,7 @@ export default function Chatbot() {
                     {suggestions.map((suggestion, idx) => (
                       <button
                         key={idx}
-                        onClick={() => useSuggestion(suggestion)}
+                        onClick={() => applySuggestion(suggestion)}
                         className="text-xs bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full px-3 py-1 text-gray-700 dark:text-gray-300"
                       >
                         {suggestion}

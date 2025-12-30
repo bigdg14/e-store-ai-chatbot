@@ -66,7 +66,7 @@ export function getCategorySlug(categoryId: number): string {
  */
 export function getCategoryIdFromSlug(slug: string): number | null {
   const entry = Object.entries(CATEGORY_METADATA).find(
-    ([_, meta]) => meta.slug === slug
+    ([, meta]) => meta.slug === slug
   );
   return entry ? parseInt(entry[0]) : null;
 }

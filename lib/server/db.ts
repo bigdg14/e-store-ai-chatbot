@@ -14,7 +14,7 @@ const pool = new Pool({
 });
 
 // Utility function for database queries
-export async function queryDatabase(query: string, params: any[] = []) {
+export async function queryDatabase(query: string, params: unknown[] = []) {
   const client = await pool.connect();
   try {
     const { rows } = await client.query(query, params);
