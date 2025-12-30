@@ -1,9 +1,24 @@
 import { queryDatabase } from "@/lib/server/db"; // ✅ Uses server-only database module
+import { enhanceCategory } from "@/lib/categoryMetadata";
+import { Category } from "@/types/products";
 
 export async function getCategories() {
   try {
     const categories = await queryDatabase("SELECT * FROM categories");
-    return { data: categories, errorMessage: null };
+
+    // Get product counts for each category
+    const categoriesWithCounts = await Promise.all(
+      categories.map(async (category: Category) => {
+        const countResult = await queryDatabase(
+          "SELECT COUNT(*) as count FROM products WHERE catId = $1",
+          [category.id]
+        );
+        const productCount = parseInt(countResult[0]?.count || "0");
+        return enhanceCategory(category, productCount);
+      })
+    );
+
+    return { data: categoriesWithCounts, errorMessage: null };
   } catch (error) {
     console.error("❌ Error fetching categories:", error);
     return { data: [], errorMessage: "Failed to load categories" };
@@ -16,9 +31,22 @@ export async function getCategoryById(categoryId: number) {
       "SELECT * FROM categories WHERE id = $1",
       [categoryId]
     );
-    return category.length > 0
-      ? { data: category[0], errorMessage: null }
-      : { data: null, errorMessage: "Category not found" };
+
+    if (category.length === 0) {
+      return { data: null, errorMessage: "Category not found" };
+    }
+
+    // Get product count
+    const countResult = await queryDatabase(
+      "SELECT COUNT(*) as count FROM products WHERE catId = $1",
+      [categoryId]
+    );
+    const productCount = parseInt(countResult[0]?.count || "0");
+
+    return {
+      data: enhanceCategory(category[0], productCount),
+      errorMessage: null,
+    };
   } catch (error) {
     console.error("❌ Error fetching category:", error);
     return { data: null, errorMessage: "Failed to fetch category" };

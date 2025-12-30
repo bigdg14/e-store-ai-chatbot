@@ -1,13 +1,13 @@
 // app/api/chatbot/route.ts
 import { NextResponse } from "next/server";
 import { ChatOpenAI } from "@langchain/openai";
-import { createSqlQueryChain } from "langchain/chains/sql_db";
-import { queryDatabase } from "@/lib/server/db";
+import { PromptTemplate } from "@langchain/core/prompts";
+import { StringOutputParser } from "@langchain/core/output_parsers";
 import {
-  ChatPromptTemplate,
-  MessagesPlaceholder,
-} from "@langchain/core/prompts";
-import { HumanMessage } from "@langchain/core/messages";
+  RunnablePassthrough,
+  RunnableSequence,
+} from "@langchain/core/runnables";
+import { queryDatabase } from "@/lib/server/db";
 
 // We'll create a simple mock for the SqlDatabase
 // that implements the required interface
@@ -80,17 +80,6 @@ const createCustomSqlDatabase = async () => {
   return mockDb;
 };
 
-// This function safely extracts numeric values from capacity strings
-const getCapacityInLiters = (capacityStr: string): number | null => {
-  if (!capacityStr) return null;
-  
-  // Extract numeric part using regex
-  const match = capacityStr.match(/(\d+(\.\d+)?)/);
-  if (!match) return null;
-  
-  return parseFloat(match[1]);
-};
-
 export async function POST(req: Request) {
   try {
     // Validate request body
@@ -134,94 +123,103 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check if we need to handle capacity filtering manually
-    const capacityMatch = lastMessage.match(/fridges?.+capacity.+(over|more than|larger than|bigger than|above)\s+(\d+)\s*(liters?|litres?|l)/i);
-
-    if (capacityMatch) {
-      const threshold = parseInt(capacityMatch[2], 10);
-      
-      try {
-        // Get all fridges
-        const fridges = await queryDatabase(`
-          SELECT p.* FROM products p
-          JOIN categories c ON p.catid = c.id
-          WHERE c.title = 'Fridges'
-        `);
-        
-        // Filter manually based on capacity
-        const matchingFridges = fridges.filter(fridge => {
-          if (!fridge.specs || !fridge.specs.capacity) return false;
-          const capacityValue = getCapacityInLiters(fridge.specs.capacity);
-          return capacityValue !== null && capacityValue > threshold;
-        });
-        
-        if (matchingFridges.length === 0) {
-          return NextResponse.json({
-            response: "I couldn't find any fridges with a capacity over " + threshold + " liters. Would you like to see our entire range of fridges instead?",
-          });
-        }
-        
-        const formattedResponse = matchingFridges
-          .map(fridge => 
-            `**${fridge.title}**\nPrice: $${fridge.price}\nCapacity: ${fridge.specs.capacity}\nStock: ${fridge.stock}`
-          )
-          .join("\n\n");
-        
-        return NextResponse.json({
-          response: `I found ${matchingFridges.length} fridges with capacity over ${threshold} liters:\n\n${formattedResponse}`,
-        });
-      } catch (error) {
-        console.error("🚨 Manual Query Error:", error);
-        return NextResponse.json({
-          response: "I had trouble searching for fridges with that capacity. Would you like to see our entire range of fridges instead?",
-        });
-      }
-    }
-
-    // For other queries, use the LLM-based approach
+    // Use the LLM-based approach with SqlDatabaseChain for natural responses
     const model = new ChatOpenAI({
       openAIApiKey: process.env.OPENAI_API_KEY!,
       modelName: "gpt-4o",
+      temperature: 0,
     });
 
     // Create our custom database
     const db = await createCustomSqlDatabase();
 
-    // Generate SQL query using LangChain
-    const chain = await createSqlQueryChain({
-      llm: model,
-      db: db as any, // Use type assertion to satisfy TypeScript
-      dialect: "postgres",
-    });
+    // Create SQL Database Chain using LCEL (LangChain Expression Language)
+    // Step 1: Generate SQL query
+    const writeQuery = PromptTemplate.fromTemplate(
+      `Given an input question, create a syntactically correct PostgreSQL query to run.
 
-    const sqlQuery = await chain.invoke({ question: lastMessage });
+IMPORTANT INSTRUCTIONS:
+- Return ONLY the SQL query, nothing else
+- Do NOT include explanations, comments, or markdown formatting
+- Do NOT wrap the query in code blocks or backticks
+- Start directly with SELECT, UPDATE, INSERT, or DELETE
+- Unless the user specifies a specific number of examples, query for at most 5 results using LIMIT
+- Never query for all columns - only select the columns needed to answer the question
+- Pay attention to column names and table names below
 
-    if (!sqlQuery || typeof sqlQuery !== "string") {
-      return NextResponse.json({ response: "Failed to generate SQL query." });
-    }
+Only use the following tables:
+{table_info}
 
-    if (!sqlQuery.toLowerCase().startsWith("select")) {
-      return NextResponse.json({
-        response: "❌ Only SELECT queries are allowed.",
-      });
-    }
+Question: {input}
+SQL Query:`
+    );
 
-    // Run the query
-    const result = await queryDatabase(sqlQuery);
+    // Step 2: Answer the question based on results
+    const answerPrompt = PromptTemplate.fromTemplate(
+      `Given the following user question, corresponding SQL query, and SQL result, answer the user question in a friendly, natural way.
+Be conversational and helpful. Format prices with dollar signs. Mention stock availability when relevant.
 
-    if (!result || result.length === 0) {
-      return NextResponse.json({ response: "No matching products found." });
-    }
+Question: {question}
+SQL Query: {query}
+SQL Result: {result}
+Answer:`
+    );
 
-    const formattedResponse = result
-      .map((row) =>
-        Object.entries(row)
-          .map(([key, value]) => `**${key}**: ${value}`)
-          .join("\n")
-      )
-      .join("\n\n");
+    // Chain everything together
+    const chain = RunnableSequence.from([
+      RunnablePassthrough.assign({
+        query: async (input: { question: string }) => {
+          let sqlQuery = await writeQuery.pipe(model).pipe(new StringOutputParser()).invoke({
+            input: input.question,
+            table_info: await (db as any).getTableInfo(),
+          });
+          console.log("🔍 Generated SQL Query (raw):", sqlQuery);
 
-    return NextResponse.json({ response: formattedResponse });
+          // Clean the SQL query - remove markdown code blocks and extra formatting
+          sqlQuery = sqlQuery.replace(/```sql\s*/gi, '').replace(/```\s*/g, '');
+          sqlQuery = sqlQuery.trim();
+
+          // Extract just the SELECT statement if there's explanatory text
+          // Match SELECT ... and everything until semicolon or end of string
+          const selectMatch = sqlQuery.match(/\b(SELECT|INSERT|UPDATE|DELETE)\b[\s\S]*?(?:;|$)/i);
+          if (selectMatch) {
+            sqlQuery = selectMatch[0].replace(/;$/, '').trim();
+          }
+
+          console.log("✨ Cleaned SQL Query:", sqlQuery);
+          return sqlQuery;
+        },
+      }),
+      RunnablePassthrough.assign({
+        result: async (input: { query: string }) => {
+          try {
+            // Execute query using our custom queryDatabase function
+            const queryResult = await queryDatabase(input.query);
+            console.log("✅ Query Result:", queryResult);
+            // Format result as JSON string for LLM to process
+            return JSON.stringify(queryResult, null, 2);
+          } catch (error) {
+            console.error("❌ Query Execution Error:", error);
+            return "No results found or query error occurred.";
+          }
+        },
+      }),
+      {
+        question: (input: { question: string }) => input.question,
+        query: (input: { query: string }) => input.query,
+        result: (input: { result: string }) => input.result,
+      },
+      answerPrompt,
+      model,
+      new StringOutputParser(),
+    ]);
+
+    // Invoke the chain
+    const response = await chain.invoke({ question: lastMessage });
+
+    console.log("💬 Final Response:", response);
+
+    return NextResponse.json({ response });
   } catch (error) {
     console.error("🚨 LangChain Query Error:", error);
 
