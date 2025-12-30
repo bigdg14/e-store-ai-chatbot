@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { getCategories, getProducts } from "@/lib/fetcher";
 import { Category, Product } from "@/types/products";
 
 export default function Home() {
@@ -13,16 +12,24 @@ export default function Home() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const categoryResponse = await getCategories();
-        if (categoryResponse.data) setCategories(categoryResponse.data);
+        // Fetch categories from API
+        const categoryResponse = await fetch('/api/categories');
+        if (categoryResponse.ok) {
+          const categoriesData = await categoryResponse.json();
+          setCategories(categoriesData);
+        }
 
-        const productResponse = await getProducts();
-        if (productResponse.data.length > 0) {
-          const randomProduct =
-            productResponse.data[
-              Math.floor(Math.random() * productResponse.data.length)
-            ];
-          setFeaturedProduct(randomProduct);
+        // Fetch products from API
+        const productResponse = await fetch('/api/products');
+        if (productResponse.ok) {
+          const productsData = await productResponse.json();
+          if (productsData.data && productsData.data.length > 0) {
+            const randomProduct =
+              productsData.data[
+                Math.floor(Math.random() * productsData.data.length)
+              ];
+            setFeaturedProduct(randomProduct);
+          }
         }
       } catch (error) {
         console.error("Error fetching data:", error);
