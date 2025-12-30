@@ -3,9 +3,10 @@ import db from "@/db/db.json"; // ✅ Ensure this path is correct
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const categoryId = Number(params.id);
+  const { id } = await params;
+  const categoryId = Number(id);
 
   if (isNaN(categoryId)) {
     return NextResponse.json({ error: "Invalid category ID" }, { status: 400 });
