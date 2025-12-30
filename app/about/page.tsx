@@ -1,18 +1,7 @@
-"use client";
-
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export default function About() {
-  // Dark mode state
-  const [darkMode, setDarkMode] = useState(false);
-
-  // Effect to sync with the site's theme
-  useEffect(() => {
-    const isDark = document.documentElement.classList.contains("dark");
-    setDarkMode(isDark);
-  }, []);
 
   return (
     <div className="container mx-auto px-4 py-8">
