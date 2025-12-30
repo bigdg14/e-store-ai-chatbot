@@ -12,7 +12,7 @@ export default function NotFound() {
           Page Not Found
         </h2>
         <p className="text-gray-600 dark:text-gray-400 mt-4 mb-8 max-w-md mx-auto">
-          Oops! The page you're looking for doesn't exist. It might have been moved or deleted.
+          Oops! The page you&apos;re looking for doesn&apos;t exist. It might have been moved or deleted.
         </p>
         <div className="flex gap-4 justify-center">
           <Link href="/">

@@ -50,7 +50,7 @@ export default function SearchResults() {
       {error && <p className="text-red-500">{error}</p>}
 
       <p className="text-gray-500">
-        Showing {products.length} results for "{query}"
+        Showing {products.length} results for &quot;{query}&quot;
       </p>
 
       {products.length > 0 ? (

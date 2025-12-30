@@ -90,8 +90,8 @@ export default function Contact() {
             Get in Touch
           </h3>
           <p className="text-gray-600 dark:text-gray-300 mb-6">
-            We're here to help! If you have any questions about our products or
-            services, please don't hesitate to reach out.
+            We&apos;re here to help! If you have any questions about our products or
+            services, please don&apos;t hesitate to reach out.
           </p>
 
           <div className="space-y-4">
@@ -139,7 +139,7 @@ export default function Contact() {
                 Message Sent!
               </h3>
               <p className="text-gray-600 dark:text-gray-300">
-                Thank you for your message. We'll get back to you as soon as
+                Thank you for your message. We&apos;ll get back to you as soon as
                 possible.
               </p>
               <p className="text-gray-600 dark:text-gray-300 mt-4">
