@@ -4,19 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { getCategories, getProducts } from "@/lib/fetcher";
-
-interface Category {
-  id: number;
-  title: string;
-}
-
-interface Product {
-  id: number;
-  title: string;
-  image: string;
-  description: string;
-  price: number;
-}
+import { Category, Product } from "@/types/products";
 
 export default function Home() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -140,12 +128,26 @@ export default function Home() {
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 <div className="relative">
+                  {/* Category Icon */}
+                  <div className="text-5xl mb-4">{category.icon || "📦"}</div>
+
                   <h3 className="text-2xl font-bold mb-2 group-hover:text-primary transition-colors">
                     {category.title}
                   </h3>
-                  <p className="text-muted-foreground group-hover:text-foreground transition-colors">
-                    Explore our collection
-                  </p>
+
+                  {category.description && (
+                    <p className="text-muted-foreground group-hover:text-foreground transition-colors mb-3 line-clamp-2">
+                      {category.description}
+                    </p>
+                  )}
+
+                  {/* Product Count Badge */}
+                  {category.productCount !== undefined && (
+                    <div className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded-full text-xs font-semibold mb-3">
+                      {category.productCount} Products
+                    </div>
+                  )}
+
                   <div className="mt-4 inline-flex items-center text-primary font-semibold group-hover:translate-x-1 transition-transform">
                     Browse →
                   </div>

@@ -22,4 +22,18 @@ export interface Product {
 export interface Category {
   id: number;
   title: string;
+  slug?: string;
+  description?: string;
+  icon?: string;
+  image?: string;
+  parentId?: number;
+  isActive?: boolean;
+  displayOrder?: number;
+  seoTitle?: string;
+  seoDescription?: string;
+  productCount?: number;
+}
+
+export interface CategoryWithProducts extends Category {
+  products?: Product[];
 }
