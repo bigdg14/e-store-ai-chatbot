@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Menu, ShoppingCart, Search, Sun, Moon, X, LogIn, LogOut } from "lucide-react";
 import { useCart } from "@/context/cartContext";
 import { Button } from "./ui/button";
@@ -64,8 +65,14 @@ export default function Navbar() {
       <nav className="container mx-auto px-4 py-4 flex justify-between items-center relative">
         {/* Logo */}
         <Link href="/" className="text-xl font-bold text-primary hover:text-primary/80 transition-colors flex items-center gap-2">
-          <span className="text-2xl">🛒</span>
-          SmartCart
+          <Image
+            src="/images/logo/smart-cart.png"
+            alt="SmartCart Logo"
+            width={40}
+            height={40}
+            className="object-contain"
+          />
+          <span className="hidden sm:inline">SmartCart</span>
         </Link>
 
         {/* Desktop Navigation */}
