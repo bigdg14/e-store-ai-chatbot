@@ -22,11 +22,16 @@ export const metadata: Metadata = {
     "smart shopping",
   ],
   authors: [{ name: "SmartCart" }],
+  icons: {
+    icon: '/images/logo/smart-cart.png',
+    apple: '/images/logo/smart-cart.png',
+  },
   openGraph: {
     title: "SmartCart - AI-Powered Shopping Assistant",
     description:
       "Shop smarter with our intelligent AI-powered e-commerce platform",
     type: "website",
+    images: ['/images/logo/smart-cart.png'],
   },
 };
 
